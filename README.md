@@ -26,11 +26,28 @@ dune test
 
 The test executable iterates every file in `../tyco-test-suite/inputs` and ensures the resulting JSON matches the canonical `expected/*.json`.
 
-### Usage
 
-Add the library via `dune` and use:
+## Quick Start
+
+This package includes a ready-to-use example Tyco file at:
+
+      example.tyco
+
+([View on GitHub](https://github.com/typedconfig/tyco-ocaml/blob/main/example.tyco))
+
+You can load and parse this file using the OCaml Tyco API. Example usage:
 
 ```ocaml
-let json = Tyco.load_file "../tyco-test-suite/inputs/simple1.tyco" in
-print_endline json
+open Tyco
+
+let () =
+   let context = Tyco.load_file "example.tyco" in
+   let globals = Tyco.get_globals context in
+   let environment = Hashtbl.find globals "environment" in
+   let debug = Hashtbl.find globals "debug" in
+   let timeout = Hashtbl.find globals "timeout" in
+   Printf.printf "env=%s debug=%b timeout=%d\n" environment debug timeout
+   (* ... access objects, etc ... *)
 ```
+
+See the [example.tyco](https://github.com/typedconfig/tyco-ocaml/blob/main/example.tyco) file for the full configuration example.
