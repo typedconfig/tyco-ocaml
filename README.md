@@ -29,25 +29,64 @@ The test executable iterates every file in `../tyco-test-suite/inputs` and ensur
 
 ## Quick Start
 
-This package includes a ready-to-use example Tyco file at:
-
-      example.tyco
-
-([View on GitHub](https://github.com/typedconfig/tyco-ocaml/blob/main/example.tyco))
-
-You can load and parse this file using the OCaml Tyco API. Example usage:
+Each binding ships the canonical sample configuration under `tyco/example.tyco`
+([view on GitHub](https://github.com/typedconfig/tyco-ocaml/blob/main/tyco/example.tyco)).
+Load it and inspect the globals/instances just like the Python README:
 
 ```ocaml
-open Tyco
+open Yojson.Basic
+open Yojson.Basic.Util
 
 let () =
-   let context = Tyco.load_file "example.tyco" in
-   let globals = Tyco.get_globals context in
-   let environment = Hashtbl.find globals "environment" in
-   let debug = Hashtbl.find globals "debug" in
-   let timeout = Hashtbl.find globals "timeout" in
-   Printf.printf "env=%s debug=%b timeout=%d\n" environment debug timeout
-   (* ... access objects, etc ... *)
+  let json =
+    Tyco.load_file "tyco/example.tyco"
+    |> Yojson.Basic.from_string
+  in
+  let environment = json |> member "environment" |> to_string in
+  let debug = json |> member "debug" |> to_bool in
+  let timeout = json |> member "timeout" |> to_int in
+  Printf.printf "env=%s debug=%b timeout=%d\n" environment debug timeout;
+  match member "Database" json with
+  | `List (primary :: _) ->
+      let host = primary |> member "host" |> to_string in
+      let port = primary |> member "port" |> to_int in
+      Printf.printf "primary database -> %s:%d\n" host port
+  | _ -> ()
 ```
 
-See the [example.tyco](https://github.com/typedconfig/tyco-ocaml/blob/main/example.tyco) file for the full configuration example.
+### Example Tyco File
+
+```
+tyco/example.tyco
+```
+
+```tyco
+# Global configuration with type annotations
+str environment: production
+bool debug: false
+int timeout: 30
+
+# Database configuration struct
+Database:
+ *str name:           # Primary key field (*)
+  str host:
+  int port:
+  str connection_string:
+  # Instances
+  - primary, localhost,    5432, "postgresql://localhost:5432/myapp"
+  - replica, replica-host, 5432, "postgresql://replica-host:5432/myapp"
+
+# Server configuration struct  
+Server:
+ *str name:           # Primary key for referencing
+  int port:
+  str host:
+  ?str description:   # Nullable field (?) - can be null
+  # Server instances
+  - web1,    8080, web1.example.com,    description: "Primary web server"
+  - api1,    3000, api1.example.com,    description: null
+  - worker1, 9000, worker1.example.com, description: "Worker number 1"
+
+# Feature flags array
+str[] features: [auth, analytics, caching]
+```
