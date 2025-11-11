@@ -1,0 +1,3 @@
+(tests
+ (names golden)
+ (libraries tyco))

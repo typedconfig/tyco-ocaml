@@ -1,0 +1,6 @@
+(library
+ (name tyco)
+(foreign_stubs
+ (language c)
+ (names tyco_stubs))
+(c_library_flags (%{env:TYCO_LIB=} -Wl,-rpath,%{env:TYCO_LIB_DIR=})))
