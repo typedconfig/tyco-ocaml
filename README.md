@@ -42,16 +42,20 @@ let () =
     Tyco.load_file "tyco/example.tyco"
     |> Yojson.Basic.from_string
   in
-  let environment = json |> member "environment" |> to_string in
-  let debug = json |> member "debug" |> to_bool in
-  let timeout = json |> member "timeout" |> to_int in
-  Printf.printf "env=%s debug=%b timeout=%d\n" environment debug timeout;
-  match member "Database" json with
+  let timezone = json |> member "timezone" |> to_string in
+  Printf.printf "timezone=%s\n" timezone;
+  (match member "Application" json with
   | `List (primary :: _) ->
-      let host = primary |> member "host" |> to_string in
-      let port = primary |> member "port" |> to_int in
-      Printf.printf "primary database -> %s:%d\n" host port
-  | _ -> ()
+      let service = primary |> member "service" |> to_string in
+      let command = primary |> member "command" |> to_string in
+      Printf.printf "primary service -> %s (%s)\n" service command
+  | _ -> ());
+  (match member "Host" json with
+  | `List (_ :: backup :: _) ->
+      let hostname = backup |> member "hostname" |> to_string in
+      let cores = backup |> member "cores" |> to_int in
+      Printf.printf "host %s cores=%d\n" hostname cores
+  | _ -> ())
 ```
 
 ### Example Tyco File
@@ -61,32 +65,29 @@ tyco/example.tyco
 ```
 
 ```tyco
-# Global configuration with type annotations
-str environment: production
-bool debug: false
-int timeout: 30
+str timezone: UTC  # this is a global config setting
 
-# Database configuration struct
-Database:
- *str name:           # Primary key field (*)
-  str host:
-  int port:
-  str connection_string:
-  # Instances
-  - primary, localhost,    5432, "postgresql://localhost:5432/myapp"
-  - replica, replica-host, 5432, "postgresql://replica-host:5432/myapp"
+Application:       # schema defined first, followed by instance creation
+  str service:
+  str profile:
+  str command: start_app {service}.{profile} -p {port.number}
+  Host host:
+  Port port: Port(http_web)  # reference to Port instance defined below
+  - service: webserver, profile: primary, host: Host(prod-01-us)
+  - service: webserver, profile: backup,  host: Host(prod-02-us)
+  - service: database,  profile: mysql,   host: Host(prod-02-us), port: Port(http_mysql)
 
-# Server configuration struct  
-Server:
- *str name:           # Primary key for referencing
-  int port:
-  str host:
-  ?str description:   # Nullable field (?) - can be null
-  # Server instances
-  - web1,    8080, web1.example.com,    description: "Primary web server"
-  - api1,    3000, api1.example.com,    description: null
-  - worker1, 9000, worker1.example.com, description: "Worker number 1"
+Host:
+ *str hostname:  # star character (*) used as reference primary key
+  int cores:
+  bool hyperthreaded: true
+  str os: Debian
+  - prod-01-us, cores: 64, hyperthreaded: false
+  - prod-02-us, cores: 32, os: Fedora
 
-# Feature flags array
-str[] features: [auth, analytics, caching]
+Port:
+ *str name:
+  int number:
+  - http_web,   80  # can skip field keys when obvious
+  - http_mysql, 3306
 ```
